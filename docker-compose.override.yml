@@ -1,0 +1,23 @@
+# Development overrides for docker-compose
+# This file is automatically loaded by docker-compose
+
+version: '3.8'
+
+services:
+  backend:
+    environment:
+      NODE_ENV: development
+    volumes:
+      # Mount source code for development
+      - ./backend/src:/app/src:ro
+      - ./backend/prisma:/app/prisma:ro
+    # Override command for development mode
+    command: >
+      sh -c "
+        npx prisma db push &&
+        npx prisma generate &&
+        npm run dev
+      "
+    # Add development dependencies
+    build:
+      target: development

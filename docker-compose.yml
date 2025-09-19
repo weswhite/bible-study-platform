@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bible-study-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bible_study
+      POSTGRES_USER: bible_user
+      POSTGRES_PASSWORD: bible_password_secure_123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - bible-study-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bible_user -d bible_study"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: bible-study-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://bible_user:bible_password_secure_123@postgres:5432/bible_study
+      JWT_ACCESS_SECRET: V/T8UJucN0ucZRH6uCf5g58CF7ttx7UA/1uWB8vDJ+E=
+      JWT_REFRESH_SECRET: mox/J4q+qvOQrJMrDsgMoohmm/y5p6EpJYiOBzmvDaA=
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+    networks:
+      - bible-study-network
+    volumes:
+      - ./backend/uploads:/app/uploads
+    command: >
+      sh -c "
+        npx prisma migrate deploy &&
+        npx prisma generate &&
+        npm run dev
+      "
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  bible-study-network:
+    driver: bridge

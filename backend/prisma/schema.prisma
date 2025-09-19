@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User management
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String   @unique
+  password  String   // bcrypt hashed
+  firstName String?
+  lastName  String?
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  membershipGroups   GroupMember[]
+  leaderGroups       StudyGroup[]  @relation("GroupLeader")
+  comments           Comment[]
+  studyResponses     StudyResponse[]
+  sessions           UserSession[]
+
+  @@map("users")
+}
+
+// User session management for JWT refresh tokens
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+// Study group system
+model StudyGroup {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  password    String   // bcrypt hashed group password
+  leaderId    String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  leader      User           @relation("GroupLeader", fields: [leaderId], references: [id])
+  members     GroupMember[]
+  studies     Study[]
+
+  @@map("study_groups")
+}
+
+model GroupMember {
+  id        String     @id @default(cuid())
+  userId    String
+  groupId   String
+  role      MemberRole @default(MEMBER)
+  joinedAt  DateTime   @default(now())
+
+  // Relationships
+  user      User       @relation(fields: [userId], references: [id])
+  group     StudyGroup @relation(fields: [groupId], references: [id])
+
+  @@unique([userId, groupId])
+  @@map("group_members")
+}
+
+// Study content system
+model Study {
+  id              String      @id @default(cuid())
+  title           String
+  description     String?
+  focusType       FocusType   // BOOK or THEME
+  focusReference  String      // e.g., "Genesis" or "Prayer"
+  groupId         String
+  markdownPath    String      // Path to markdown file
+  scheduledDate   DateTime?
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relationships
+  group           StudyGroup    @relation(fields: [groupId], references: [id])
+  weeks           StudyWeek[]
+  comments        Comment[]
+  responses       StudyResponse[]
+
+  @@map("studies")
+}
+
+model StudyWeek {
+  id              String   @id @default(cuid())
+  studyId         String
+  weekNumber      Int
+  title           String
+  passage         String   // Bible passage reference
+  scheduledDate   DateTime?
+  markdownContent String   // Markdown content for the week
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relationships
+  study           Study      @relation(fields: [studyId], references: [id])
+  comments        Comment[]
+  responses       StudyResponse[]
+
+  @@unique([studyId, weekNumber])
+  @@map("study_weeks")
+}
+
+// Interactive features
+model Comment {
+  id          String    @id @default(cuid())
+  content     String
+  authorId    String
+  studyId     String?
+  weekId      String?
+  passage     String?   // Specific passage reference
+  position    Json?     // Position data for inline comments
+  parentId    String?   // For threaded comments
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relationships
+  author      User         @relation(fields: [authorId], references: [id])
+  study       Study?       @relation(fields: [studyId], references: [id])
+  week        StudyWeek?   @relation(fields: [weekId], references: [id])
+  parent      Comment?     @relation("CommentThread", fields: [parentId], references: [id])
+  replies     Comment[]    @relation("CommentThread")
+
+  @@map("comments")
+}
+
+model StudyResponse {
+  id          String    @id @default(cuid())
+  userId      String
+  studyId     String?
+  weekId      String?
+  questionId  String    // Identifier for the question within the study
+  response    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relationships
+  user        User         @relation(fields: [userId], references: [id])
+  study       Study?       @relation(fields: [studyId], references: [id])
+  week        StudyWeek?   @relation(fields: [weekId], references: [id])
+
+  @@unique([userId, studyId, weekId, questionId])
+  @@map("study_responses")
+}
+
+// Enums
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum MemberRole {
+  MEMBER
+  MODERATOR
+  LEADER
+}
+
+enum FocusType {
+  BOOK
+  THEME
+}
