@@ -74,6 +74,9 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
         <div className="text-center">
+          <div className="flex justify-center mb-8">
+            <img src="/logo.svg" alt="BBLVRS" className="h-20 w-auto" />
+          </div>
           <Heading level={2} className="!text-gray-900 !font-bold text-center">Create your account</Heading>
         </div>
         <Form className="mt-8 space-y-6" method="post">

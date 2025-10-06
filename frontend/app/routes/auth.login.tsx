@@ -68,7 +68,10 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 text-center">Sign in to your account</h2>
+          <div className="flex justify-center mb-8">
+            <img src="/logo.svg" alt="BBLVRS" className="h-20 w-auto" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 text-center">Sign in to your account</h2>
         </div>
         <Form className="mt-8 space-y-6" method="post">
           <div className="space-y-4">
@@ -86,15 +89,15 @@ export default function Login() {
             </Field>
 
             <Field>
-              <Label htmlFor="password" className="!text-gray-900 !font-medium">Password</Label>
-              <Input
+              <Label htmlFor="password" className="!text-gray-900 !font-medium !block">Password</Label>
+              <input
                 id="password"
                 name="password"
                 type="password"
                 autoComplete="current-password"
                 required
                 placeholder="Password"
-                className="border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </Field>
           </div>
