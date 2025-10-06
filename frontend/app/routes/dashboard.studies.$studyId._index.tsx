@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import api from '~/lib/api';
 import { connectToStudy, joinStudy, leaveStudy, onActiveUsers, onUserJoined, onUserLeft, disconnectSocket } from '~/lib/socket';
 import { Dialog, DialogTitle, DialogDescription, DialogActions } from '~/components/dialog';
+import { PresenceIndicator, FloatingPresenceHeader } from '~/components/PresenceIndicator';
 import { CalendarDaysIcon, PlusIcon, BookOpenIcon, ChatBubbleLeftIcon, UserGroupIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -56,6 +57,7 @@ export default function StudyDetail() {
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isAddWeekModalOpen, setIsAddWeekModalOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     // Get access token from cookie or localStorage
@@ -65,6 +67,14 @@ export default function StudyDetail() {
       ?.split('=')[1];
 
     if (accessToken) {
+      // Extract user ID from JWT token (basic decode)
+      try {
+        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+        setCurrentUserId(payload.userId);
+      } catch (e) {
+        console.error('Failed to decode token:', e);
+      }
+
       // Connect to socket
       const socket = connectToStudy(accessToken);
 
@@ -105,6 +115,13 @@ export default function StudyDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Floating presence indicator */}
+      <FloatingPresenceHeader
+        activeUsers={activeUsers}
+        currentUserId={currentUserId || undefined}
+        isConnected={isConnected}
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header Section */}
         <div className="mb-8">

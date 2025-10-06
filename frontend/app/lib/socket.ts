@@ -7,7 +7,7 @@ export function connectToStudy(accessToken: string) {
     socket.disconnect();
   }
 
-  socket = io(process.env.NODE_ENV === 'production' ? 'https://your-backend-url.com/study' : 'http://localhost:3001/study', {
+  socket = io(import.meta.env.VITE_API_BASE_URL ? `${import.meta.env.VITE_API_BASE_URL}/study` : 'http://localhost:3001/study', {
     auth: {
       token: accessToken
     },

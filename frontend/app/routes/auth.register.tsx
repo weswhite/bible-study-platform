@@ -2,8 +2,7 @@ import { Form, redirect, useActionData, useNavigation } from 'react-router';
 import type { ActionFunctionArgs } from 'react-router';
 import api from '~/lib/api';
 import { Button } from '~/components/button';
-import { Input } from '~/components/input';
-import { Field, Label, ErrorMessage, Description } from '~/components/fieldset';
+import { Field, Label } from '~/components/fieldset';
 import { Heading } from '~/components/heading';
 import { Link } from '~/components/link';
 
@@ -15,7 +14,14 @@ export async function action({ request }: ActionFunctionArgs) {
   const firstName = formData.get('firstName') as string;
   const lastName = formData.get('lastName') as string;
 
+  console.log('=== REGISTRATION DEBUG v4 ===');
+  console.log('VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
+  console.log('All env vars:', import.meta.env);
+  console.log('Request data:', { username, email, firstName, lastName });
+  console.log('Current location:', typeof window !== 'undefined' ? window.location.href : 'server-side');
+
   try {
+    console.log('Making API request to:', '/api/auth/register');
     const response = await api.post('/api/auth/register', {
       username,
       email,
@@ -24,14 +30,36 @@ export async function action({ request }: ActionFunctionArgs) {
       lastName
     });
 
+    console.log('API Response:', { status: response.status, data: response.data });
     if (response.status === 201) {
       return redirect('/dashboard');
     }
   } catch (error: any) {
-    return {
-      error: error.response?.data?.message || 'Registration failed',
-      details: error.response?.data?.details || []
-    };
+    console.error('=== REGISTRATION ERROR ===');
+    console.error('Error object:', error);
+    console.error('Error message:', error.message);
+    console.error('Error response:', error.response);
+    console.error('Error request:', error.request);
+    console.error('Error config:', error.config);
+    if (error.response) {
+      // Server responded with error status
+      return {
+        error: error.response.data?.message || error.response.data?.error || 'Registration failed',
+        details: error.response.data?.details || []
+      };
+    } else if (error.request) {
+      // Request was made but no response received
+      return {
+        error: 'Unable to connect to server. Please try again.',
+        details: []
+      };
+    } else {
+      // Something else happened
+      return {
+        error: 'An unexpected error occurred. Please try again.',
+        details: []
+      };
+    }
   }
 
   return null;
@@ -53,63 +81,63 @@ export default function Register() {
             <div className="grid grid-cols-2 gap-4">
               <Field>
                 <Label htmlFor="firstName" className="!text-gray-900 !font-medium">First Name</Label>
-                <Input
+                <input
                   id="firstName"
                   name="firstName"
                   type="text"
-                  className="border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </Field>
               <Field>
                 <Label htmlFor="lastName" className="!text-gray-900 !font-medium">Last Name</Label>
-                <Input
+                <input
                   id="lastName"
                   name="lastName"
                   type="text"
-                  className="border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                 />
               </Field>
             </div>
 
             <Field>
               <Label htmlFor="username" className="!text-gray-900 !font-medium">Username</Label>
-              <Input
+              <input
                 id="username"
                 name="username"
                 type="text"
                 required
-                className="border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </Field>
 
             <Field>
               <Label htmlFor="email" className="!text-gray-900 !font-medium">Email Address</Label>
-              <Input
+              <input
                 id="email"
                 name="email"
                 type="email"
                 required
-                className="border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </Field>
 
             <Field>
               <Label htmlFor="password" className="!text-gray-900 !font-medium">Password</Label>
-              <Input
+              <input
                 id="password"
                 name="password"
                 type="password"
                 required
-                className="border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
-              <Description>
+              <p className="text-sm text-gray-500 mt-1">
                 Must contain uppercase, lowercase, number, and special character
-              </Description>
+              </p>
             </Field>
           </div>
 
           {actionData?.error && (
-            <ErrorMessage>
+            <div className="text-red-600 text-sm font-medium">
               <p>{actionData.error}</p>
               {actionData.details && actionData.details.length > 0 && (
                 <ul className="mt-2 list-disc list-inside text-sm">
@@ -118,7 +146,7 @@ export default function Register() {
                   ))}
                 </ul>
               )}
-            </ErrorMessage>
+            </div>
           )}
 
           <div>

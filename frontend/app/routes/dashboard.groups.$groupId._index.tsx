@@ -10,7 +10,7 @@ import { Field, Label } from '~/components/fieldset';
 import { Heading } from '~/components/heading';
 import { Text } from '~/components/text';
 import { Link } from '~/components/link';
-import { PlusIcon, UserGroupIcon, BookOpenIcon, ChevronRightIcon, UserIcon, ArrowLeftIcon } from '@heroicons/react/20/solid';
+import { PlusIcon, UserGroupIcon, BookOpenIcon, ChevronRightIcon, ArrowLeftIcon } from '@heroicons/react/20/solid';
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   try {
@@ -54,24 +54,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
   }
 
-  if (intent === 'add-member') {
-    const email = formData.get('email') as string;
-
-    try {
-      await api.post(`/api/groups/${params.groupId}/members`, {
-        email
-      }, {
-        headers: {
-          Cookie: request.headers.get('Cookie') || ''
-        }
-      });
-      return redirect(`/dashboard/groups/${params.groupId}`);
-    } catch (error: any) {
-      return {
-        error: error.response?.data?.message || 'Failed to add member'
-      };
-    }
-  }
 
   return null;
 }
@@ -80,7 +62,6 @@ export default function GroupDetail() {
   const { group } = useLoaderData<typeof loader>();
   const canManage = ['LEADER', 'MODERATOR'].includes(group.currentUserRole);
   const [isCreateStudyModalOpen, setIsCreateStudyModalOpen] = useState(false);
-  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -124,22 +105,13 @@ export default function GroupDetail() {
                   </p>
                 </div>
                 {canManage && (
-                  <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-                    <button
-                      onClick={() => setIsAddMemberModalOpen(true)}
-                      className="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"
-                    >
-                      <UserIcon className="w-5 h-5 mr-2" />
-                      Add Member
-                    </button>
-                    <button
-                      onClick={() => setIsCreateStudyModalOpen(true)}
-                      className="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
-                    >
-                      <PlusIcon className="w-5 h-5 mr-2" />
-                      Create Study
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setIsCreateStudyModalOpen(true)}
+                    className="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
+                  >
+                    <PlusIcon className="w-5 h-5 mr-2" />
+                    Create Study
+                  </button>
                 )}
               </div>
             </div>
@@ -272,54 +244,6 @@ export default function GroupDetail() {
           </div>
         </div>
 
-        {/* Add Member Modal */}
-        <Dialog open={isAddMemberModalOpen} onClose={setIsAddMemberModalOpen} size="sm">
-          <div>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-              <UserIcon aria-hidden="true" className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="mt-3 text-center sm:mt-5">
-              <DialogTitle>Add Member to Group</DialogTitle>
-              <DialogDescription>
-                Invite someone to join this study group by entering their email address.
-              </DialogDescription>
-            </div>
-          </div>
-
-          <Form method="post" id="add-member-form" className="mt-6">
-            <input type="hidden" name="intent" value="add-member" />
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">Email Address</label>
-              <input
-                name="email"
-                id="email"
-                type="email"
-                required
-                placeholder="Enter user's email address"
-                className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-green-500 sm:text-sm"
-              />
-            </div>
-          </Form>
-
-          <DialogActions>
-            <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
-              <button
-                type="submit"
-                form="add-member-form"
-                className="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 sm:col-start-2"
-              >
-                Add Member
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAddMemberModalOpen(false)}
-                className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
-              >
-                Cancel
-              </button>
-            </div>
-          </DialogActions>
-        </Dialog>
 
         {/* Create Study Modal */}
         <Dialog open={isCreateStudyModalOpen} onClose={setIsCreateStudyModalOpen}>

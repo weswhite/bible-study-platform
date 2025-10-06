@@ -25,13 +25,13 @@ export function generateTokens(userId: string, sessionId: string) {
   const accessToken = jwt.sign(
     { userId, sessionId, type: 'access' },
     process.env.JWT_ACCESS_SECRET!,
-    { expiresIn: '15m' }
+    { expiresIn: '4h' }
   );
 
   const refreshToken = jwt.sign(
     { userId, sessionId, type: 'refresh' },
     process.env.JWT_REFRESH_SECRET!,
-    { expiresIn: '7d' }
+    { expiresIn: '30d' }
   );
 
   return { accessToken, refreshToken };
@@ -44,15 +44,15 @@ export function setTokenCookies(res: Response, tokens: { accessToken: string; re
   res.cookie('accessToken', tokens.accessToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'strict',
-    maxAge: 15 * 60 * 1000 // 15 minutes
+    sameSite: 'lax', // Keep lax for cross-domain setup
+    maxAge: 4 * 60 * 60 * 1000 // 4 hours
   });
 
   res.cookie('refreshToken', tokens.refreshToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    sameSite: 'lax', // Keep lax for cross-domain setup
+    maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
   });
 }
 

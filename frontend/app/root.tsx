@@ -8,6 +8,7 @@ import {
 
 import type { LinksFunction } from "react-router";
 import stylesheet from "./tailwind.css?url";
+// Force rebuild with env var v3 - cache bust
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },

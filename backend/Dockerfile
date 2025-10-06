@@ -22,8 +22,8 @@ CMD ["npm", "run", "dev"]
 # Production stage
 FROM base AS production
 
-# Install production dependencies only
-RUN npm ci --only=production && npm cache clean --force
+# Install all dependencies for building
+RUN npm ci && npm cache clean --force
 
 # Copy Prisma schema first for caching
 COPY prisma ./prisma/
@@ -36,6 +36,9 @@ COPY . .
 
 # Build the application
 RUN npm run build
+
+# Remove devDependencies to reduce image size
+RUN npm prune --production
 
 # Expose port
 EXPOSE 3001

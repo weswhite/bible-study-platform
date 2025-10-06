@@ -1,7 +1,14 @@
 import axios from 'axios';
 
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+console.log('=== API CLIENT INITIALIZATION - DEBUG v4 ===');
+console.log('VITE_API_BASE_URL env var:', import.meta.env.VITE_API_BASE_URL);
+console.log('Resolved baseURL:', baseURL);
+console.log('Import meta env:', import.meta.env);
+console.log('Window location:', typeof window !== 'undefined' ? window.location.href : 'server-side');
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001',
+  baseURL,
   withCredentials: true,
   timeout: 10000,
 });
@@ -9,7 +16,9 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    const fullUrl = `${config.baseURL}${config.url}`;
+    console.log(`API Request: ${config.method?.toUpperCase()} ${fullUrl}`);
+    console.log('Request config:', { baseURL: config.baseURL, url: config.url, data: config.data });
     return config;
   },
   (error) => {

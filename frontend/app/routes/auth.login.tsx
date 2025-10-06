@@ -3,7 +3,7 @@ import type { ActionFunctionArgs } from 'react-router';
 import api from '~/lib/api';
 import { Button } from '~/components/button';
 import { Input } from '~/components/input';
-import { Field, Label, ErrorMessage } from '~/components/fieldset';
+import { Field, Label } from '~/components/fieldset';
 import { Heading } from '~/components/heading';
 import { Text } from '~/components/text';
 import { Link } from '~/components/link';
@@ -38,9 +38,22 @@ export async function action({ request }: ActionFunctionArgs) {
       return redirect('/dashboard', { headers });
     }
   } catch (error: any) {
-    return {
-      error: error.response?.data?.message || 'Login failed'
-    };
+    if (error.response) {
+      // Server responded with error status
+      return {
+        error: error.response.data?.message || error.response.data?.error || 'Login failed'
+      };
+    } else if (error.request) {
+      // Request was made but no response received
+      return {
+        error: 'Unable to connect to server. Please try again.'
+      };
+    } else {
+      // Something else happened
+      return {
+        error: 'An unexpected error occurred. Please try again.'
+      };
+    }
   }
 
   return null;
@@ -61,14 +74,14 @@ export default function Login() {
           <div className="space-y-4">
             <Field>
               <Label htmlFor="email" className="!text-gray-900 !font-medium !block">Email address</Label>
-              <Input
+              <input
                 id="email"
                 name="email"
                 type="email"
                 autoComplete="email"
                 required
                 placeholder="Email address"
-                className="!border-gray-300 !bg-white !text-gray-900 placeholder:!text-gray-500 focus:!border-indigo-500 focus:!ring-2 focus:!ring-indigo-500/20"
+                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </Field>
 
@@ -81,13 +94,15 @@ export default function Login() {
                 autoComplete="current-password"
                 required
                 placeholder="Password"
-                className="!border-gray-300 !bg-white !text-gray-900 placeholder:!text-gray-500 focus:!border-indigo-500 focus:!ring-2 focus:!ring-indigo-500/20"
+                className="border-gray-300 bg-white text-gray-900 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
             </Field>
           </div>
 
           {actionData?.error && (
-            <ErrorMessage>{actionData.error}</ErrorMessage>
+            <div className="text-red-600 text-sm font-medium">
+              {actionData.error}
+            </div>
           )}
 
           <div>
