@@ -1,11 +1,11 @@
-import { useLoaderData, Form, useNavigation } from 'react-router';
+import { useLoaderData, Form, useNavigation, redirect } from 'react-router';
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useEffect, useState } from 'react';
 import api from '~/lib/api';
 import { connectToStudy, joinStudy, leaveStudy, onActiveUsers, onUserJoined, onUserLeft, disconnectSocket } from '~/lib/socket';
 import { Dialog, DialogTitle, DialogDescription, DialogActions } from '~/components/dialog';
 import { PresenceIndicator, FloatingPresenceHeader } from '~/components/PresenceIndicator';
-import { CalendarDaysIcon, PlusIcon, BookOpenIcon, ChatBubbleLeftIcon, UserGroupIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
+import { CalendarDaysIcon, PlusIcon, BookOpenIcon, ChatBubbleLeftIcon, UserGroupIcon, ChevronRightIcon, TrashIcon } from '@heroicons/react/20/solid';
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   try {
@@ -47,6 +47,21 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
   }
 
+  if (intent === 'delete-study') {
+    try {
+      await api.delete(`/api/studies/${params.studyId}`, {
+        headers: {
+          Cookie: request.headers.get('Cookie') || ''
+        }
+      });
+      return redirect('/dashboard');
+    } catch (error: any) {
+      return {
+        error: error.response?.data?.message || 'Failed to delete study'
+      };
+    }
+  }
+
   return null;
 }
 
@@ -57,6 +72,7 @@ export default function StudyDetail() {
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isAddWeekModalOpen, setIsAddWeekModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -134,13 +150,22 @@ export default function StudyDetail() {
               </p>
             </div>
             {canManage && (
-              <button
-                onClick={() => setIsAddWeekModalOpen(true)}
-                className="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-              >
-                <PlusIcon className="w-5 h-5 mr-2" />
-                Add Week
-              </button>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                >
+                  <TrashIcon className="w-4 h-4 mr-2" />
+                  Delete Study
+                </button>
+                <button
+                  onClick={() => setIsAddWeekModalOpen(true)}
+                  className="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                >
+                  <PlusIcon className="w-5 h-5 mr-2" />
+                  Add Week
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -394,6 +419,47 @@ export default function StudyDetail() {
               <button
                 type="button"
                 onClick={() => setIsAddWeekModalOpen(false)}
+                className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
+              >
+                Cancel
+              </button>
+            </div>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {/* Delete Study Modal */}
+      {canManage && (
+        <Dialog open={isDeleteModalOpen} onClose={setIsDeleteModalOpen} size="md">
+          <div>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <TrashIcon aria-hidden="true" className="h-6 w-6 text-red-600" />
+            </div>
+            <div className="mt-3 text-center sm:mt-5">
+              <DialogTitle>Delete Study</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete "{study.title}"? This action cannot be undone. All study weeks, comments, and responses will be permanently deleted.
+              </DialogDescription>
+            </div>
+          </div>
+
+          <Form method="post" id="delete-study-form" className="mt-6">
+            <input type="hidden" name="intent" value="delete-study" />
+          </Form>
+
+          <DialogActions>
+            <div className="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+              <button
+                type="submit"
+                form="delete-study-form"
+                disabled={navigation.state === 'submitting'}
+                className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 sm:col-start-2 disabled:opacity-50"
+              >
+                {navigation.state === 'submitting' ? 'Deleting...' : 'Delete Study'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
                 className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:col-start-1 sm:mt-0"
               >
                 Cancel

@@ -323,4 +323,68 @@ router.get('/:studyId/weeks/:weekNumber', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete study
+router.delete('/:studyId', authMiddleware, async (req, res) => {
+  try {
+    const { studyId } = req.params;
+
+    // Get study and verify permissions
+    const study = await prisma.study.findUnique({
+      where: { id: studyId },
+      include: {
+        group: {
+          include: {
+            members: {
+              where: { userId: req.user.id }
+            }
+          }
+        }
+      }
+    });
+
+    if (!study) {
+      return res.status(404).json({
+        error: 'Study not found',
+        message: 'The requested study does not exist'
+      });
+    }
+
+    const membership = study.group.members[0];
+    if (!membership || !['LEADER', 'MODERATOR'].includes(membership.role)) {
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'You must be a group leader or moderator to delete studies'
+      });
+    }
+
+    // Delete related records first (cascading delete)
+    await prisma.studyResponse.deleteMany({
+      where: { studyId }
+    });
+
+    await prisma.comment.deleteMany({
+      where: { studyId }
+    });
+
+    await prisma.studyWeek.deleteMany({
+      where: { studyId }
+    });
+
+    // Finally delete the study
+    await prisma.study.delete({
+      where: { id: studyId }
+    });
+
+    res.json({
+      message: 'Study deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting study:', error);
+    res.status(500).json({
+      error: 'Failed to delete study',
+      message: 'Unable to delete study'
+    });
+  }
+});
+
 export default router;
