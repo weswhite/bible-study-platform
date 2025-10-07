@@ -1,9 +1,9 @@
-import type { MetaFunction } from 'react-router';
+import type { MetaFunction } from "react-router";
 
 export const meta: MetaFunction = () => {
   return [
-    { title: 'Bible Study App' },
-    { name: 'description', content: 'Collaborative Bible study platform' },
+    { title: "Bible Study App" },
+    { name: "description", content: "Collaborative Bible study platform" },
   ];
 };
 
@@ -13,7 +13,11 @@ export default function Index() {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <img src="/logo.svg" alt="BBLVRS" className="h-24 w-auto" />
+            <img
+              src="/reflected-logo.svg"
+              alt="BBLVRS"
+              className="h-24 w-auto"
+            />
           </div>
           <p className="text-xl text-gray-600 mb-8">
             Collaborative scripture study for small groups

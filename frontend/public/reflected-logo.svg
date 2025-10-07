@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="600" viewBox="0 0 1600 600">
+  <defs>
+    <!-- Gradient starts fully opaque and fades out quickly -->
+    <linearGradient id="fadeGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="white" stop-opacity="1"/>
+      <stop offset="40%" stop-color="white" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="reflectionMask" maskUnits="userSpaceOnUse">
+      <rect x="0" y="300" width="1600" height="300" fill="url(#fadeGradient)" />
+    </mask>
+  </defs>
+
+  <!-- Original text (top) -->
+  <text x="50%" y="260" font-family="Georgia, serif" font-size="300" fill="black" text-anchor="middle" dominant-baseline="middle">
+    BBLVRS
+  </text>
+
+  <!-- Reflected text (bottom) with consistent gap (~80px) -->
+  <g mask="url(#reflectionMask)">
+    <text x="50%" y="-420" font-family="Georgia, serif" font-size="300" fill="black" text-anchor="middle" dominant-baseline="middle"
+          transform="scale(1,-1)">
+      BBLVRS
+    </text>
+  </g>
+</svg>
