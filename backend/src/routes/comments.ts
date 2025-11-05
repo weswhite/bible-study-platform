@@ -25,6 +25,14 @@ const createCommentSchema = z.object({
 // Add comment to a study week
 router.post('/', authMiddleware, validateRequest(createCommentSchema), async (req, res) => {
   try {
+    console.log('POST /api/comments - Request received:', {
+      user: req.user?.id,
+      hasUser: !!req.user,
+      bodyKeys: Object.keys(req.body),
+      weekId: req.body.weekId,
+      studyId: req.body.studyId
+    });
+
     const { content, weekId, studyId, passage, textAnchor, parentId } = req.body;
 
     // Verify user has access to the study/week
@@ -66,12 +74,17 @@ router.post('/', authMiddleware, validateRequest(createCommentSchema), async (re
       hasAccess = !!(study && study.group.members.length > 0);
     }
 
+    console.log('POST /api/comments - Access check:', { hasAccess, weekId, studyId });
+
     if (!hasAccess) {
+      console.log('POST /api/comments - Access denied');
       return res.status(403).json({
         error: 'Access denied',
         message: 'You must be a group member to comment'
       });
     }
+
+    console.log('POST /api/comments - Creating comment');
 
     // Create the comment
     const comment = await prisma.comment.create({
@@ -112,12 +125,14 @@ router.post('/', authMiddleware, validateRequest(createCommentSchema), async (re
       }
     });
 
+    console.log('POST /api/comments - Comment created successfully:', comment.id);
+
     res.status(201).json({
       message: 'Comment added successfully',
       comment
     });
   } catch (error) {
-    console.error('Error creating comment:', error);
+    console.error('POST /api/comments - Error creating comment:', error);
     res.status(500).json({
       error: 'Failed to create comment',
       message: 'Unable to add comment'

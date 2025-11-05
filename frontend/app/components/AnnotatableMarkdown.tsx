@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getUserColor } from '~/utils/userColors';
@@ -210,12 +211,11 @@ export function AnnotatableMarkdown({
     // Get the range and its position
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
-    const containerRect = contentRef.current.getBoundingClientRect();
 
-    // Calculate position relative to content container
+    // Calculate position relative to viewport (for fixed positioning)
     const position = {
-      top: rect.top - containerRect.top,
-      right: containerRect.width - (rect.right - containerRect.left) + 10
+      top: rect.bottom + window.scrollY + 10, // Position below selection
+      right: window.innerWidth - rect.right
     };
 
     setSelectedText(selectedText);
@@ -331,11 +331,15 @@ export function AnnotatableMarkdown({
         );
       })}
 
-      {/* Comment form for new selection */}
-      {showCommentForm && selectionPosition && (
+      {/* Comment form for new selection - rendered as portal */}
+      {showCommentForm && selectionPosition && typeof document !== 'undefined' && createPortal(
         <div
-          className="absolute z-50 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4"
-          style={{ top: selectionPosition.top, right: selectionPosition.right }}
+          className="fixed w-80 bg-white rounded-lg shadow-2xl border-2 border-blue-300 p-4"
+          style={{
+            top: selectionPosition.top,
+            right: selectionPosition.right,
+            zIndex: 9999
+          }}
         >
           <div className="mb-3">
             <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
@@ -382,7 +386,8 @@ export function AnnotatableMarkdown({
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

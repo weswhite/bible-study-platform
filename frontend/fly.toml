@@ -7,6 +7,7 @@ app = 'frontend-aged-tree-3636'
 primary_region = 'iad'
 
 [build]
+  dockerfile = "./Dockerfile"
 
 [http_service]
   internal_port = 3000

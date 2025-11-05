@@ -1,8 +1,65 @@
-import { useLoaderData, useParams } from 'react-router';
-import type { LoaderFunctionArgs } from 'react-router';
-import { useState } from 'react';
+import { useLoaderData, useParams, Form, useActionData, useNavigation, useFetcher } from 'react-router';
+import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
+import { useState, useEffect } from 'react';
 import { AnnotatableMarkdown } from '~/components/AnnotatableMarkdown';
 import api from '~/lib/api';
+
+export async function action({ request, params }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const intent = formData.get('intent');
+
+  if (intent === 'addComment') {
+    const content = formData.get('content');
+    const weekId = formData.get('weekId');
+
+    try {
+      const response = await api.post('/api/comments', {
+        content,
+        weekId
+      }, {
+        headers: {
+          Cookie: request.headers.get('Cookie') || ''
+        }
+      });
+
+      return { success: true, comment: response.data.comment, type: 'regular' };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || 'Failed to post comment'
+      };
+    }
+  }
+
+  if (intent === 'addInlineComment') {
+    const content = formData.get('content');
+    const weekId = formData.get('weekId');
+    const textAnchorJson = formData.get('textAnchor');
+
+    try {
+      const textAnchor = textAnchorJson ? JSON.parse(textAnchorJson as string) : null;
+
+      const response = await api.post('/api/comments', {
+        content,
+        weekId,
+        textAnchor
+      }, {
+        headers: {
+          Cookie: request.headers.get('Cookie') || ''
+        }
+      });
+
+      return { success: true, comment: response.data.comment, type: 'inline' };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || 'Failed to post inline comment'
+      };
+    }
+  }
+
+  return { success: false, error: 'Invalid action' };
+}
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   try {
@@ -42,28 +99,42 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 export default function StudyWeek() {
   const { week, userRole, textAnchoredComments: initialTextAnchoredComments, regularComments: initialRegularComments } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
+  const navigation = useNavigation();
+  const fetcher = useFetcher<typeof action>();
   const params = useParams();
   const [textAnchoredComments, setTextAnchoredComments] = useState<any[]>(initialTextAnchoredComments);
   const [regularComments, setRegularComments] = useState<any[]>(initialRegularComments);
   const [selectedComments, setSelectedComments] = useState<any[] | null>(null);
   const [selectedTextAnchor, setSelectedTextAnchor] = useState<any | null>(null);
-  const [newCommentContent, setNewCommentContent] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
+  const [selectedUserFilter, setSelectedUserFilter] = useState<string | null>(null);
 
-  // Handle adding new text-anchored comment
-  const handleAddTextAnchoredComment = async (textAnchor: any, content: string) => {
-    try {
-      const response = await api.post('/api/comments', {
-        content,
-        weekId: week.id,
-        textAnchor
-      });
+  const isSubmitting = navigation.state === 'submitting';
 
-      // Add the new comment to the state
-      setTextAnchoredComments(prev => [...prev, response.data.comment]);
-    } catch (error) {
-      console.error('Failed to add comment:', error);
+  // Handle successful comment submission (regular comments)
+  useEffect(() => {
+    if (actionData?.success && actionData?.comment && actionData?.type === 'regular') {
+      setRegularComments(prev => [actionData.comment, ...prev]);
     }
+  }, [actionData]);
+
+  // Handle successful inline comment submission
+  useEffect(() => {
+    if (fetcher.data?.success && fetcher.data?.comment && fetcher.data?.type === 'inline') {
+      setTextAnchoredComments(prev => [...prev, fetcher.data.comment]);
+    }
+  }, [fetcher.data]);
+
+  // Handle adding new text-anchored comment using fetcher
+  const handleAddTextAnchoredComment = (textAnchor: any, content: string) => {
+    const formData = new FormData();
+    formData.append('intent', 'addInlineComment');
+    formData.append('content', content);
+    formData.append('weekId', week.id);
+    formData.append('textAnchor', JSON.stringify(textAnchor));
+
+    fetcher.submit(formData, { method: 'post' });
   };
 
   // Handle clicking on a comment marker
@@ -72,27 +143,23 @@ export default function StudyWeek() {
     setSelectedTextAnchor(textAnchor);
   };
 
-  // Handle adding new regular comment
-  const handleAddRegularComment = async () => {
-    if (!newCommentContent.trim() || isSubmitting) return;
-
-    setIsSubmitting(true);
-    try {
-      const response = await api.post('/api/comments', {
-        content: newCommentContent.trim(),
-        weekId: week.id
-        // No textAnchor for regular comments
-      });
-
-      // Add the new comment to the state
-      setRegularComments(prev => [...prev, response.data.comment]);
-      setNewCommentContent(''); // Clear the form
-    } catch (error) {
-      console.error('Failed to add comment:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+  // Get unique users from all text-anchored comments
+  const getAllUsers = () => {
+    const usersMap = new Map();
+    textAnchoredComments.forEach(comment => {
+      if (!usersMap.has(comment.author.id)) {
+        usersMap.set(comment.author.id, comment.author);
+      }
+    });
+    return Array.from(usersMap.values());
   };
+
+  // Filter comments by selected user
+  const getFilteredComments = () => {
+    if (!selectedUserFilter) return textAnchoredComments;
+    return textAnchoredComments.filter(comment => comment.author.id === selectedUserFilter);
+  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -152,25 +219,30 @@ export default function StudyWeek() {
                 </h2>
 
                 {/* Add Comment Form */}
-                <div className="mb-6">
+                <Form method="post" className="mb-6">
+                  <input type="hidden" name="intent" value="addComment" />
+                  <input type="hidden" name="weekId" value={week.id} />
                   <textarea
-                    value={newCommentContent}
-                    onChange={(e) => setNewCommentContent(e.target.value)}
+                    name="content"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     rows={3}
                     placeholder="Share your thoughts on this week's study..."
                     disabled={isSubmitting}
+                    required
                   />
+                  {actionData && !actionData.success && (
+                    <p className="mt-2 text-sm text-red-600">{actionData.error}</p>
+                  )}
                   <div className="mt-3 flex justify-end">
                     <button
-                      onClick={handleAddRegularComment}
-                      disabled={!newCommentContent.trim() || isSubmitting}
+                      type="submit"
+                      disabled={isSubmitting}
                       className="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg border border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? 'Adding...' : 'Add Comment'}
                     </button>
                   </div>
-                </div>
+                </Form>
 
                 {/* Comments List */}
                 {regularComments && regularComments.length > 0 ? (
@@ -219,15 +291,27 @@ export default function StudyWeek() {
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                 <div className="h-2 bg-gradient-to-r from-purple-500 to-blue-500"></div>
                 <div className="p-6 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {selectedComments ? 'Selected Comment Thread' : 'Text Comments'}
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {selectedComments ?
-                      `${selectedComments.length} comment${selectedComments.length !== 1 ? 's' : ''} on selected text` :
-                      `${textAnchoredComments.length} comment${textAnchoredComments.length !== 1 ? 's' : ''} on specific text`
-                    }
-                  </p>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {selectedComments ? 'Selected Comment Thread' : 'Text Comments'}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {selectedComments ?
+                          `${selectedComments.length} comment${selectedComments.length !== 1 ? 's' : ''} on selected text` :
+                          `${textAnchoredComments.length} comment${textAnchoredComments.length !== 1 ? 's' : ''} on specific text`
+                        }
+                      </p>
+                    </div>
+                    {!selectedComments && textAnchoredComments.length > 0 && (
+                      <button
+                        onClick={() => setIsCommentsModalOpen(true)}
+                        className="ml-3 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg border border-blue-200 transition-colors duration-200"
+                      >
+                        View All
+                      </button>
+                    )}
+                  </div>
                   {selectedComments && (
                     <button
                       onClick={() => {
@@ -440,6 +524,175 @@ export default function StudyWeek() {
           </div>
         </div>
       </div>
+
+      {/* Full Comments Modal */}
+      {isCommentsModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-purple-500 to-blue-500 p-6 text-white">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold">All Text Comments</h2>
+                  <p className="text-sm text-purple-100 mt-1">
+                    {getFilteredComments().length} comment{getFilteredComments().length !== 1 ? 's' : ''} on specific text
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsCommentsModalOpen(false);
+                    setSelectedUserFilter(null);
+                  }}
+                  className="text-white hover:text-purple-100 transition-colors duration-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* User Filter */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-purple-100 mb-2">
+                  Filter by user:
+                </label>
+                <select
+                  value={selectedUserFilter || ''}
+                  onChange={(e) => setSelectedUserFilter(e.target.value || null)}
+                  className="w-full max-w-xs px-3 py-2 bg-white text-gray-900 rounded-lg border border-purple-300 focus:outline-none focus:ring-2 focus:ring-white"
+                >
+                  <option value="">All Users</option>
+                  {getAllUsers().map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.firstName && user.lastName
+                        ? `${user.firstName} ${user.lastName}`
+                        : user.username}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {(() => {
+                const filteredComments = getFilteredComments();
+
+                if (filteredComments.length === 0) {
+                  return (
+                    <div className="text-center text-gray-500 py-12">
+                      <p className="text-lg">No comments found for this filter.</p>
+                    </div>
+                  );
+                }
+
+                // Group comments by text anchor
+                const commentGroups = new Map<string, any[]>();
+                filteredComments.forEach(comment => {
+                  if (comment.position && comment.position.type === 'textAnchor') {
+                    const key = `${comment.position.startOffset}-${comment.position.endOffset}`;
+                    if (!commentGroups.has(key)) {
+                      commentGroups.set(key, []);
+                    }
+                    commentGroups.get(key)!.push(comment);
+                  }
+                });
+
+                return (
+                  <div className="space-y-6">
+                    {Array.from(commentGroups.entries()).map(([key, groupComments]) => {
+                      const firstComment = groupComments[0];
+                      const uniqueUsers = Array.from(
+                        new Map(groupComments.map(c => [c.author.id, c.author])).values()
+                      );
+
+                      return (
+                        <div key={key} className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                          {/* Selected text preview */}
+                          <div className="mb-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                            <p className="text-xs text-gray-600 uppercase font-semibold mb-1">Commenting on:</p>
+                            <p className="text-gray-900 font-medium">
+                              "{firstComment.position?.selectedText}"
+                            </p>
+                          </div>
+
+                          {/* Comment thread */}
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center space-x-2">
+                                <div className="flex -space-x-2">
+                                  {uniqueUsers.slice(0, 5).map(user => (
+                                    <div
+                                      key={user.id}
+                                      className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium text-white"
+                                      title={user.firstName && user.lastName
+                                        ? `${user.firstName} ${user.lastName}`
+                                        : user.username}
+                                    >
+                                      {user.firstName?.[0] || user.username[0]}
+                                    </div>
+                                  ))}
+                                  {uniqueUsers.length > 5 && (
+                                    <div className="w-8 h-8 bg-gray-400 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium text-white">
+                                      +{uniqueUsers.length - 5}
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-sm font-medium text-gray-700">
+                                  {groupComments.length} comment{groupComments.length !== 1 ? 's' : ''}
+                                  {uniqueUsers.length > 1 && ` from ${uniqueUsers.length} user${uniqueUsers.length !== 1 ? 's' : ''}`}
+                                </p>
+                              </div>
+                            </div>
+
+                            {groupComments
+                              .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                              .map((comment: any) => (
+                                <div key={comment.id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                                  <div className="flex items-start space-x-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                                      {comment.author.firstName?.[0] || comment.author.username[0]}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <span className="text-sm font-semibold text-gray-900">
+                                          {comment.author.firstName && comment.author.lastName
+                                            ? `${comment.author.firstName} ${comment.author.lastName}`
+                                            : comment.author.username}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(comment.createdAt).toLocaleDateString()} at {new Date(comment.createdAt).toLocaleTimeString()}
+                                        </span>
+                                      </div>
+                                      <p className="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-gray-200 p-4 bg-gray-50">
+              <button
+                onClick={() => {
+                  setIsCommentsModalOpen(false);
+                  setSelectedUserFilter(null);
+                }}
+                className="w-full px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-medium rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all duration-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

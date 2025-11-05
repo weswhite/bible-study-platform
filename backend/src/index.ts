@@ -29,6 +29,13 @@ const io = setupSocketServer(httpServer);
 
 // Middleware
 app.use(helmet());
+
+// Log CORS configuration
+console.log('CORS Configuration:', {
+  allowedOrigin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+});
+
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
@@ -37,6 +44,19 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Add cookie parser
+
+// Log request origin for debugging
+app.use((req, res, next) => {
+  if (req.method === 'POST') {
+    console.log('POST Request Origin:', {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      path: req.path,
+      cookies: Object.keys(req.cookies)
+    });
+  }
+  next();
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {

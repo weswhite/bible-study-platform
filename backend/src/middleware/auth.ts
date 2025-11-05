@@ -44,14 +44,14 @@ export function setTokenCookies(res: Response, tokens: { accessToken: string; re
   res.cookie('accessToken', tokens.accessToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'lax', // Keep lax for cross-domain setup
+    sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin POST in production
     maxAge: 4 * 60 * 60 * 1000 // 4 hours
   });
 
   res.cookie('refreshToken', tokens.refreshToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'lax', // Keep lax for cross-domain setup
+    sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin POST in production
     maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
   });
 }
@@ -94,7 +94,16 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     const accessToken = req.cookies.accessToken;
     const refreshToken = req.cookies.refreshToken;
 
+    console.log('Auth middleware - cookies:', {
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      allCookies: Object.keys(req.cookies),
+      path: req.path,
+      method: req.method
+    });
+
     if (!accessToken) {
+      console.log('Auth failed: No access token provided');
       return res.status(401).json({ error: 'No access token provided' });
     }
 
