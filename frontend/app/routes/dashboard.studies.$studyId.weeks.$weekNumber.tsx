@@ -2,6 +2,7 @@ import { useLoaderData, useParams, Form, useActionData, useNavigation, useFetche
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useState, useEffect } from 'react';
 import { AnnotatableMarkdown } from '~/components/AnnotatableMarkdown';
+import { getUserColor } from '~/utils/userColors';
 import api from '~/lib/api';
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -343,10 +344,11 @@ export default function StudyWeek() {
                           .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                           .map((comment: any, index: number) => {
                             const isFirstFromUser = index === 0 || selectedComments[index - 1].author.id !== comment.author.id;
+                            const color = getUserColor(comment.author.id);
                             return (
                               <div key={comment.id} className={`flex items-start space-x-3 ${!isFirstFromUser ? 'ml-11' : ''}`}>
                                 {isFirstFromUser && (
-                                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                                  <div className={`w-8 h-8 ${color.accent} rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0`}>
                                     {comment.author.firstName?.[0] || comment.author.username[0]}
                                   </div>
                                 )}
@@ -415,14 +417,17 @@ export default function StudyWeek() {
                                   <div className="flex items-center space-x-2">
                                     {/* User avatars */}
                                     <div className="flex -space-x-1">
-                                      {uniqueUsers.slice(0, 3).map(user => (
-                                        <div
-                                          key={user.id}
-                                          className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium text-white"
-                                        >
-                                          {user.firstName?.[0] || user.username[0]}
-                                        </div>
-                                      ))}
+                                      {uniqueUsers.slice(0, 3).map(user => {
+                                        const color = getUserColor(user.id);
+                                        return (
+                                          <div
+                                            key={user.id}
+                                            className={`w-6 h-6 ${color.accent} rounded-full border-2 border-white flex items-center justify-center text-xs font-medium text-white`}
+                                          >
+                                            {user.firstName?.[0] || user.username[0]}
+                                          </div>
+                                        );
+                                      })}
                                       {uniqueUsers.length > 3 && (
                                         <div className="w-6 h-6 bg-gray-400 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium text-white">
                                           +{uniqueUsers.length - 3}
@@ -621,17 +626,20 @@ export default function StudyWeek() {
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center space-x-2">
                                 <div className="flex -space-x-2">
-                                  {uniqueUsers.slice(0, 5).map(user => (
-                                    <div
-                                      key={user.id}
-                                      className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium text-white"
-                                      title={user.firstName && user.lastName
-                                        ? `${user.firstName} ${user.lastName}`
-                                        : user.username}
-                                    >
-                                      {user.firstName?.[0] || user.username[0]}
-                                    </div>
-                                  ))}
+                                  {uniqueUsers.slice(0, 5).map(user => {
+                                    const color = getUserColor(user.id);
+                                    return (
+                                      <div
+                                        key={user.id}
+                                        className={`w-8 h-8 ${color.accent} rounded-full border-2 border-white flex items-center justify-center text-xs font-medium text-white`}
+                                        title={user.firstName && user.lastName
+                                          ? `${user.firstName} ${user.lastName}`
+                                          : user.username}
+                                      >
+                                        {user.firstName?.[0] || user.username[0]}
+                                      </div>
+                                    );
+                                  })}
                                   {uniqueUsers.length > 5 && (
                                     <div className="w-8 h-8 bg-gray-400 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium text-white">
                                       +{uniqueUsers.length - 5}
@@ -647,12 +655,14 @@ export default function StudyWeek() {
 
                             {groupComments
                               .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-                              .map((comment: any) => (
-                                <div key={comment.id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                                  <div className="flex items-start space-x-3">
-                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
-                                      {comment.author.firstName?.[0] || comment.author.username[0]}
-                                    </div>
+                              .map((comment: any) => {
+                                const color = getUserColor(comment.author.id);
+                                return (
+                                  <div key={comment.id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                                    <div className="flex items-start space-x-3">
+                                      <div className={`w-10 h-10 ${color.accent} rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0`}>
+                                        {comment.author.firstName?.[0] || comment.author.username[0]}
+                                      </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center justify-between mb-2">
                                         <span className="text-sm font-semibold text-gray-900">
@@ -668,7 +678,8 @@ export default function StudyWeek() {
                                     </div>
                                   </div>
                                 </div>
-                              ))}
+                                );
+                              })}
                           </div>
                         </div>
                       );

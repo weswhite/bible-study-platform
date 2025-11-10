@@ -52,7 +52,7 @@ export function AnnotatableMarkdown({
 }: AnnotatableMarkdownProps) {
   const [commentMarkers, setCommentMarkers] = useState<CommentMarker[]>([]);
   const [selectedText, setSelectedText] = useState('');
-  const [selectionPosition, setSelectionPosition] = useState<{ top: number; right: number } | null>(null);
+  const [selectionPosition, setSelectionPosition] = useState<{ top: number; left: number } | null>(null);
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [newCommentContent, setNewCommentContent] = useState('');
   const contentRef = useRef<HTMLDivElement>(null);
@@ -214,8 +214,8 @@ export function AnnotatableMarkdown({
 
     // Calculate position relative to viewport (for fixed positioning)
     const position = {
-      top: rect.bottom + window.scrollY + 10, // Position below selection
-      right: window.innerWidth - rect.right
+      top: rect.bottom + 10, // Position below selection (viewport coords)
+      left: rect.left        // Position at left edge of selection (viewport coords)
     };
 
     setSelectedText(selectedText);
@@ -337,7 +337,7 @@ export function AnnotatableMarkdown({
           className="fixed w-80 bg-white rounded-lg shadow-2xl border-2 border-blue-300 p-4"
           style={{
             top: selectionPosition.top,
-            right: selectionPosition.right,
+            left: selectionPosition.left,
             zIndex: 9999
           }}
         >
